@@ -13,8 +13,6 @@ Car rental booking system for Malaysia built with **Laravel 13, Inertia.js, Reac
 
 ## Screenshots
 
-> Add your screenshots to `docs/screenshots/` with these names and they will show up here.
-
 | Landing page | Browse cars |
 | --- | --- |
 | ![Landing page](docs/screenshots/landing.png) | ![Browse cars](docs/screenshots/browse-cars.png) |
