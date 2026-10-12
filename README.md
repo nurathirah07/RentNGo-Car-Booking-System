@@ -17,11 +17,11 @@ Car rental booking system for Malaysia built with **Laravel 13, Inertia.js, Reac
 
 | Landing page | Browse cars |
 | --- | --- |
-| ![Landing page](docs/screenshots/landing.png) | ![Browse cars](docs/screenshots/browse-cars.png) |
+| ![Landing page](C:\LaravelProjects\rentngo-app\docs\screenshots\landing.png) | ![Browse cars](C:\LaravelProjects\rentngo-app\docs\screenshots\browse-cars.png) |
 
 | Booking with live availability | Admin dashboard |
 | --- | --- |
-| ![Booking](docs/screenshots/booking.png) | ![Admin dashboard](docs/screenshots/admin-dashboard.png) |
+| ![Booking](C:\LaravelProjects\rentngo-app\docs\screenshots\booking.png) | ![Admin dashboard](C:\LaravelProjects\rentngo-app\docs\screenshots\admin-dashboard.png) |
 
 ---
 
