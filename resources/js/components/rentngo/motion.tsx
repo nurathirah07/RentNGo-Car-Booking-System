@@ -29,10 +29,13 @@ export function Stagger({
     gap = 0.05,
     delay = 0,
     variant = 'fadeUp',
+    inView = false,
     ...aria
 }: AriaAttributes & {
     children: ReactNode;
     className?: string;
+    /** Wait until the list scrolls into view before animating (sections lower on a page). */
+    inView?: boolean;
     /** Seconds between one item and the next */
     gap?: number;
     delay?: number;
@@ -44,7 +47,12 @@ export function Stagger({
             className={className}
             variants={staggerContainer(gap, delay)}
             initial="hidden"
-            animate="visible"
+            {...(inView
+                ? {
+                      whileInView: 'visible',
+                      viewport: { once: true, margin: '-60px' },
+                  }
+                : { animate: 'visible' })}
         >
             {Children.map(children, (child, index) =>
                 isValidElement(child) ? (
@@ -69,18 +77,26 @@ export function Reveal({
     className,
     variant = 'fadeUp',
     delay = 0,
+    inView = false,
 }: {
     children: ReactNode;
     className?: string;
     variant?: VariantName;
     delay?: number;
+    /** Wait until the block scrolls into view before animating. */
+    inView?: boolean;
 }) {
     return (
         <motion.div
             className={cn(className)}
             variants={variantsByName[variant]}
             initial="hidden"
-            animate="visible"
+            {...(inView
+                ? {
+                      whileInView: 'visible',
+                      viewport: { once: true, margin: '-60px' },
+                  }
+                : { animate: 'visible' })}
             // Keep the shared duration/easing, only add the delay.
             transition={delay ? { ...baseTransition, delay } : undefined}
         >

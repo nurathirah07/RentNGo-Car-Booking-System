@@ -45,6 +45,9 @@ class DashboardController extends Controller
                     'return' => $booking->return_date->format('d M Y'),
                     'pickup_location' => $booking->pickup_location,
                     'status' => $booking->status,
+                    'total_days' => $booking->total_days,
+                    // 0 = today, 3 = in three days; negative while the trip is under way
+                    'starts_in_days' => (int) today()->diffInDays($booking->pickup_date, false),
                 ]),
             'profileComplete' => $user->hasCompleteProfile(),
         ]);

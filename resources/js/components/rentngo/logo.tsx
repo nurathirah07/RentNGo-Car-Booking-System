@@ -26,7 +26,15 @@ export default function Logo({
                         tone === 'light' ? 'text-white' : 'text-foreground',
                     )}
                 >
-                    Rent<span className="text-brand">N</span>Go
+                    Rent
+                    <span
+                        className={
+                            tone === 'light' ? 'text-[#b8c8ff]' : 'text-brand'
+                        }
+                    >
+                        N
+                    </span>
+                    Go
                 </span>
             )}
         </span>

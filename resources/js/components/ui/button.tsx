@@ -18,6 +18,8 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
+        // vivid blue call-to-action, used on the login/register card (RentNGo)
+        brand: "bg-brand text-brand-foreground shadow-glow hover:brightness-110",
         // plain white button, e.g. a second action next to a primary one (RentNGo)
         light: "border border-border bg-card text-foreground shadow-xs hover:border-brand/30 hover:shadow-lift",
         // light-blue icon buttons and soft actions (RentNGo)

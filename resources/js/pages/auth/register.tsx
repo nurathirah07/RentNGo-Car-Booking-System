@@ -1,11 +1,9 @@
-import { Form, Head } from '@inertiajs/react';
-import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
-import TextLink from '@/components/text-link';
+import { Form, Head, Link } from '@inertiajs/react';
+import { ArrowRight, IdCard, Mail } from 'lucide-react';
+import AuthField from '@/components/rentngo/auth-field';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { clearCelebration, markCelebration } from '@/lib/celebration';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -21,92 +19,94 @@ export default function Register({ passwordRules }: Props) {
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
-                className="flex flex-col gap-6"
+                // Plays the "Welcome to RentNGo" animation on the next page
+                onStart={() => markCelebration('register')}
+                onError={() => clearCelebration()}
+                className="flex flex-col gap-4"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="name"
-                                    name="name"
-                                    placeholder="Full name"
-                                />
-                                <InputError
-                                    message={errors.name}
-                                    className="mt-2"
-                                />
-                            </div>
+                        <AuthField
+                            id="name"
+                            name="name"
+                            label="Full name"
+                            icon={IdCard}
+                            required
+                            autoFocus
+                            tabIndex={1}
+                            autoComplete="name"
+                            placeholder="As on your IC"
+                            error={errors.name}
+                        />
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="email"
-                                    name="email"
-                                    placeholder="email@example.com"
-                                />
-                                <InputError message={errors.email} />
-                            </div>
+                        <AuthField
+                            id="email"
+                            name="email"
+                            type="email"
+                            label="Email"
+                            icon={Mail}
+                            required
+                            tabIndex={2}
+                            autoComplete="email"
+                            placeholder="you@example.com"
+                            error={errors.email}
+                        />
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="password">Password</Label>
-                                <PasswordInput
-                                    id="password"
-                                    required
-                                    tabIndex={3}
-                                    autoComplete="new-password"
-                                    name="password"
-                                    placeholder="Password"
-                                    passwordrules={passwordRules}
-                                />
-                                <InputError message={errors.password} />
-                            </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <AuthField
+                                id="password"
+                                name="password"
+                                type="password"
+                                label="Password"
+                                required
+                                tabIndex={3}
+                                autoComplete="new-password"
+                                placeholder="Strong password"
+                                passwordrules={passwordRules}
+                                error={errors.password}
+                            />
+                            <AuthField
+                                id="password_confirmation"
+                                name="password_confirmation"
+                                type="password"
+                                label="Confirm password"
+                                required
+                                tabIndex={4}
+                                autoComplete="new-password"
+                                placeholder="Type it again"
+                                passwordrules={passwordRules}
+                                error={errors.password_confirmation}
+                            />
+                        </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="password_confirmation">
-                                    Confirm password
-                                </Label>
-                                <PasswordInput
-                                    id="password_confirmation"
-                                    required
-                                    tabIndex={4}
-                                    autoComplete="new-password"
-                                    name="password_confirmation"
-                                    placeholder="Confirm password"
-                                    passwordrules={passwordRules}
-                                />
-                                <InputError
-                                    message={errors.password_confirmation}
-                                />
-                            </div>
+                        <p className="px-1 text-caption text-muted-foreground">
+                            You&apos;ll add your IC and driving license later,
+                            before your first booking.
+                        </p>
 
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <Button
+                                asChild
+                                variant="ghost"
+                                size="lg"
+                                className="order-2 rounded-full bg-muted text-muted-foreground hover:bg-primary-hover hover:text-primary-foreground sm:order-1"
+                            >
+                                <Link href={login()} tabIndex={6}>
+                                    I have an account
+                                </Link>
+                            </Button>
                             <Button
                                 type="submit"
+                                variant="brand"
                                 size="lg"
-                                className="mt-2 w-full"
+                                className="order-1 rounded-full sm:order-2"
                                 tabIndex={5}
                                 data-test="register-user-button"
                             >
-                                {processing && <Spinner />}
-                                Create account
+                                {processing ? <Spinner /> : null}
+                                {processing ? 'Creating…' : 'Create account'}
+                                {!processing && <ArrowRight />}
                             </Button>
-                        </div>
-
-                        <div className="text-center text-sm text-muted-foreground">
-                            Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={6}>
-                                Log in
-                            </TextLink>
                         </div>
                     </>
                 )}
@@ -116,6 +116,6 @@ export default function Register({ passwordRules }: Props) {
 }
 
 Register.layout = {
-    title: 'Create your account',
-    description: 'It takes a minute. Then pick a car and your dates.',
+    title: 'Create new account',
+    description: '',
 };

@@ -8,6 +8,7 @@ import {
     LayoutGrid,
     MapPin,
     Menu,
+    Plus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useMotionValueEvent, useScroll } from 'motion/react';
@@ -206,9 +207,9 @@ export default function TopNav() {
                         size="pill"
                         className="hidden lg:inline-flex"
                     >
-                        <Link href={myBookingsIndex()}>
-                            <CalendarCheck />
-                            My Bookings
+                        <Link href={carsIndex()}>
+                            <Plus />
+                            Book a car
                         </Link>
                     </Button>
 
