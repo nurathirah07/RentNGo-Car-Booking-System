@@ -51,6 +51,12 @@ class StoreVehicleRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:2000'],
             // Optional photo: only jpg/png/webp, max 2 MB (the max rule counts kilobytes for files).
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            // Extra gallery photos (the car page shows them as thumbnails).
+            'gallery' => ['nullable', 'array', 'max:'.Vehicle::MAX_GALLERY_IMAGES],
+            'gallery.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            // IDs of gallery photos to delete (edit form only).
+            'remove_gallery' => ['nullable', 'array'],
+            'remove_gallery.*' => ['integer'],
         ];
     }
 
@@ -73,6 +79,9 @@ class StoreVehicleRequest extends FormRequest
             'plate_number.unique' => 'Another vehicle already uses this plate number.',
             'category_id.required' => 'Please choose a category.',
             'image.max' => 'The image must not be larger than 2 MB.',
+            'gallery.max' => 'You can add up to '.Vehicle::MAX_GALLERY_IMAGES.' gallery photos.',
+            'gallery.*.max' => 'Each gallery photo must not be larger than 2 MB.',
+            'gallery.*.image' => 'Gallery files must be images.',
         ];
     }
 }

@@ -9,7 +9,34 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
+/**
+ * @property int $id
+ * @property string $booking_ref
+ * @property int $user_id
+ * @property int $vehicle_id
+ * @property Carbon $pickup_date
+ * @property string|null $pickup_time
+ * @property Carbon $return_date
+ * @property string $pickup_location
+ * @property int $total_days
+ * @property string $price_per_day
+ * @property string $subtotal_amount
+ * @property string $discount_amount
+ * @property string $total_amount
+ * @property string $deposit_amount
+ * @property int $late_days
+ * @property string $late_fee
+ * @property 'pending'|'confirmed'|'cancelled'|'completed' $status
+ * @property string|null $notes
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read User $user
+ * @property-read Vehicle $vehicle
+ * @property-read Payment|null $payment
+ * @property-read Review|null $review
+ */
 class Booking extends Model
 {
     /** @use HasFactory<BookingFactory> */
@@ -26,7 +53,12 @@ class Booking extends Model
         'pickup_location',
         'total_days',
         'price_per_day',
+        'subtotal_amount',
+        'discount_amount',
         'total_amount',
+        'deposit_amount',
+        'late_days',
+        'late_fee',
         'status',
         'notes',
     ];
@@ -63,26 +95,45 @@ class Booking extends Model
             'pickup_date' => 'date',
             'return_date' => 'date',
             'price_per_day' => 'decimal:2',
+            'subtotal_amount' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'deposit_amount' => 'decimal:2',
+            'late_fee' => 'decimal:2',
+            'late_days' => 'integer',
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Vehicle, $this> */
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
     }
 
+    /** @return HasOne<Payment, $this> */
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
     }
 
-    /** Only bookings that still hold the car. */
+    /** @return HasOne<Review, $this> */
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
+    }
+
+    /**
+     * Only bookings that still hold the car.
+     *
+     * @param  Builder<Booking>  $query
+     * @return Builder<Booking>
+     */
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereIn('status', self::ACTIVE_STATUSES);
@@ -91,6 +142,9 @@ class Booking extends Model
     /**
      * Two date ranges overlap when:
      * new pickup <= existing return  AND  new return >= existing pickup
+     *
+     * @param  Builder<Booking>  $query
+     * @return Builder<Booking>
      */
     public function scopeOverlapping(Builder $query, string $pickupDate, string $returnDate): Builder
     {
@@ -106,7 +160,7 @@ class Booking extends Model
 
     public function canChangeStatusTo(string $status): bool
     {
-        return in_array($status, self::STATUS_TRANSITIONS[$this->status] ?? [], true);
+        return in_array($status, self::STATUS_TRANSITIONS[$this->status], true);
     }
 
     /** Customers may cancel their own booking until the pickup day. */
@@ -135,11 +189,22 @@ class Booking extends Model
         return (int) Carbon::parse($pickupDate)->diffInDays(Carbon::parse($returnDate)) + 1;
     }
 
-    /** e.g. RNG-20261012-0004 */
-    public static function generateRef(string $pickupDate): string
+    /** A unique placeholder reference, replaced by assignRef() once the booking has an id. */
+    public static function temporaryRef(): string
     {
-        $next = (static::max('id') ?? 0) + 1;
+        return 'TMP-'.Str::upper(Str::random(16));
+    }
 
-        return 'RNG-'.Carbon::parse($pickupDate)->format('Ymd').'-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    /**
+     * Give the booking its real reference, e.g. RNG-20261012-0004, built from its own id.
+     *
+     * Using the id (unique by definition) instead of "highest id + 1" means two
+     * customers booking at the same moment can never get the same reference.
+     */
+    public function assignRef(): void
+    {
+        $this->update([
+            'booking_ref' => 'RNG-'.$this->pickup_date->format('Ymd').'-'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT),
+        ]);
     }
 }

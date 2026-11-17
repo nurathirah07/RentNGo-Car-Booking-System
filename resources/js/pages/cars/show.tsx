@@ -13,6 +13,7 @@ import {
     Landmark,
     LayoutGrid,
     MapPin,
+    MessageSquareQuote,
     Palette,
     Settings2,
     ShieldCheck,
@@ -33,6 +34,8 @@ import AnimatedNumber from '@/components/rentngo/animated-number';
 import CarImage from '@/components/rentngo/car-image';
 import ChoiceChips from '@/components/rentngo/choice-chips';
 import ImageLightbox from '@/components/rentngo/image-lightbox';
+import PriceBreakdown from '@/components/rentngo/price-breakdown';
+import { StarRating } from '@/components/rentngo/star-rating';
 import { Tag } from '@/components/rentngo/status-badge';
 import StepIndicator from '@/components/rentngo/step-indicator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -54,7 +57,7 @@ import { baseTransition } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { readPickupLocation } from '@/lib/pickup-location';
 import { edit as profileEdit } from '@/routes/profile';
-import type { AvailabilityResult, CarDetails } from '@/types';
+import type { AvailabilityResult, CarDetails, CarReview } from '@/types';
 
 type Dates = {
     pickup_date: string;
@@ -64,6 +67,7 @@ type Dates = {
 type CarShowProps = {
     vehicle: CarDetails;
     bookedRanges: string[];
+    reviews: CarReview[];
     bookedDates: { from: string; to: string }[];
     initialDates: Dates;
     pickupLocations: string[];
@@ -86,6 +90,7 @@ const paymentIcons: Record<string, LucideIcon> = {
 export default function CarShow({
     vehicle,
     bookedRanges,
+    reviews,
     bookedDates,
     initialDates,
     pickupLocations,
@@ -163,6 +168,8 @@ export default function CarShow({
         }));
         checkAvailability(pickupDate, returnDate);
     }
+
+    const [activePhoto, setActivePhoto] = useState(0); // which gallery photo is shown large
 
     // "Book now" first opens a summary to check; "Confirm booking" sends it.
     const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -278,7 +285,10 @@ export default function CarShow({
                             </Tag>
                         </div>
                         <ImageLightbox
+                            key={activePhoto}
                             src={vehicle.image_url}
+                            images={vehicle.gallery}
+                            startIndex={activePhoto}
                             alt={vehicle.name}
                         >
                             <Reveal
@@ -286,18 +296,62 @@ export default function CarShow({
                                 className="mx-auto mt-6 aspect-16/8 max-w-2xl"
                             >
                                 <CarImage
-                                    src={vehicle.image_url}
+                                    key={activePhoto}
+                                    src={
+                                        vehicle.gallery[activePhoto] ??
+                                        vehicle.image_url
+                                    }
                                     alt={vehicle.name}
+                                    className="animate-in duration-300 fade-in"
                                 />
                             </Reveal>
                         </ImageLightbox>
                     </div>
 
+                    {/* Gallery thumbnails (only when the car has extra photos) */}
+                    {vehicle.gallery.length > 1 && (
+                        <div
+                            className="-mt-2 flex gap-2 overflow-x-auto pb-1"
+                            role="group"
+                            aria-label="Photos"
+                        >
+                            {vehicle.gallery.map((photo, index) => (
+                                <button
+                                    key={photo}
+                                    type="button"
+                                    onClick={() => setActivePhoto(index)}
+                                    aria-label={`Show photo ${index + 1} of ${vehicle.gallery.length}`}
+                                    aria-pressed={index === activePhoto}
+                                    className={cn(
+                                        'h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 bg-surface-gradient p-1 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                                        index === activePhoto
+                                            ? 'border-brand'
+                                            : 'border-transparent',
+                                    )}
+                                >
+                                    <CarImage src={photo} alt="" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                             <h1 className="text-h1">{vehicle.name}</h1>
-                            <p className="mt-1 text-sm text-muted-foreground">
+                            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                                 {vehicle.category} · {vehicle.year} model
+                                {vehicle.rating != null && (
+                                    <a
+                                        href="#reviews"
+                                        className="inline-flex items-center gap-1.5 rounded-sm font-medium text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                    >
+                                        <StarRating rating={vehicle.rating} />
+                                        {vehicle.rating.toFixed(1)}
+                                        <span className="text-muted-foreground">
+                                            ({vehicle.reviews_count})
+                                        </span>
+                                    </a>
+                                )}
                             </p>
                         </div>
                         <p className="whitespace-nowrap">
@@ -365,6 +419,48 @@ export default function CarShow({
                             </ul>
                         )}
                     </div>
+                    <section
+                        id="reviews"
+                        className="scroll-mt-24 rounded-xl border bg-card p-5 shadow-soft"
+                    >
+                        <h2 className="flex items-center gap-2 text-sm font-semibold">
+                            <MessageSquareQuote className="size-4 text-brand" />
+                            What renters say
+                        </h2>
+                        {reviews.length === 0 ? (
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                No reviews yet. Rent it and be the first to rate
+                                it.
+                            </p>
+                        ) : (
+                            <ul className="mt-3 divide-y">
+                                {reviews.map((review) => (
+                                    <li
+                                        key={review.id}
+                                        className="py-3 first:pt-1 last:pb-0"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="text-sm font-semibold">
+                                                {review.name}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {review.date}
+                                            </span>
+                                        </div>
+                                        <StarRating
+                                            rating={review.rating}
+                                            className="mt-1"
+                                        />
+                                        {review.comment && (
+                                            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                                                {review.comment}
+                                            </p>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
                 </div>
 
                 {/* Booking card */}
@@ -549,39 +645,21 @@ export default function CarShow({
                                         </div>
 
                                         {result.available && (
-                                            <dl className="space-y-2 rounded-xl bg-muted/60 p-4 text-sm">
-                                                <div className="flex justify-between">
-                                                    <dt className="text-muted-foreground">
-                                                        {ringgit(
-                                                            vehicle.price_per_day,
-                                                        )}{' '}
-                                                        × {result.total_days}{' '}
-                                                        day
-                                                        {result.total_days === 1
-                                                            ? ''
-                                                            : 's'}
-                                                    </dt>
-                                                    <dd>
-                                                        <AnimatedNumber
-                                                            value={
-                                                                result.total_amount
-                                                            }
-                                                            format={ringgit}
-                                                        />
-                                                    </dd>
-                                                </div>
-                                                <div className="flex justify-between border-t border-dashed pt-2 text-base font-bold">
-                                                    <dt>Total</dt>
-                                                    <dd>
-                                                        <AnimatedNumber
-                                                            value={
-                                                                result.total_amount
-                                                            }
-                                                            format={ringgit}
-                                                        />
-                                                    </dd>
-                                                </div>
-                                            </dl>
+                                            <PriceBreakdown
+                                                animated
+                                                pricePerDay={
+                                                    vehicle.price_per_day
+                                                }
+                                                days={result.total_days}
+                                                subtotal={
+                                                    result.subtotal_amount
+                                                }
+                                                discount={
+                                                    result.discount_amount
+                                                }
+                                                total={result.total_amount}
+                                                deposit={result.deposit_amount}
+                                            />
                                         )}
                                     </Reveal>
                                 )}
@@ -787,20 +865,14 @@ export default function CarShow({
                     </dl>
 
                     {result?.available && (
-                        <div className="space-y-2 rounded-xl bg-muted/60 p-4 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                    {ringgit(vehicle.price_per_day)} ×{' '}
-                                    {result.total_days} day
-                                    {result.total_days === 1 ? '' : 's'}
-                                </span>
-                                <span>{ringgit(result.total_amount)}</span>
-                            </div>
-                            <div className="flex justify-between border-t border-dashed pt-2 text-base font-bold">
-                                <span>Total</span>
-                                <span>{ringgit(result.total_amount)}</span>
-                            </div>
-                        </div>
+                        <PriceBreakdown
+                            pricePerDay={vehicle.price_per_day}
+                            days={result.total_days}
+                            subtotal={result.subtotal_amount}
+                            discount={result.discount_amount}
+                            total={result.total_amount}
+                            deposit={result.deposit_amount}
+                        />
                     )}
 
                     <DialogFooter className="gap-2">

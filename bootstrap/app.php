@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // ToyyibPay posts to this URL from its own server, so it can't send our CSRF token.
+        // The callback is still safe: it only records a payment ToyyibPay's API confirms.
+        $middleware->preventRequestForgery(except: ['payments/toyyibpay/callback']);
+
         $middleware->web(append: [
             EnsureUserIsActive::class, // logs out users who were blocked by an admin
             HandleAppearance::class,

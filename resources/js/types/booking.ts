@@ -17,6 +17,9 @@ export type CarCard = {
     status?: 'available' | 'maintenance' | 'inactive';
     /** Only sent by the Browse page: booked at least twice. */
     is_popular?: boolean;
+    /** Average star rating (1 decimal), null when nobody has reviewed it yet. */
+    rating?: number | null;
+    reviews_count?: number;
 };
 
 /** The Browse page filters, exactly as they appear in the URL (all strings, '' = not set). */
@@ -48,6 +51,18 @@ export type CarDetails = CarCard & {
     color: string | null;
     description: string | null;
     is_rentable: boolean;
+    /** Main photo first, then the gallery photos. */
+    gallery: string[];
+};
+
+/** A review shown on the car page. */
+export type CarReview = {
+    id: number;
+    name: string;
+    rating: number;
+    comment: string | null;
+    /** e.g. "Nov 2026" */
+    date: string | null;
 };
 
 /** A row on the customer's "My bookings" page (BookingController@index). */
@@ -62,12 +77,21 @@ export type CustomerBooking = {
     pickup_time: string | null;
     return: string;
     total_days: number;
+    price_per_day: number;
+    subtotal_amount: number;
+    discount_amount: number;
     total_amount: number;
+    deposit_amount: number;
+    late_fee: number;
     pickup_location: string;
     status: BookingStatus;
     payment_method: string | null;
     payment_status: PaymentStatus | null;
     can_cancel: boolean;
+    can_pay: boolean;
+    can_review: boolean;
+    /** The stars this customer gave, once reviewed. */
+    my_rating: number | null;
 };
 
 /** A row on the admin bookings page (Admin\BookingController@index). */
@@ -83,6 +107,7 @@ export type AdminBooking = {
     pickup_time: string | null;
     return: string;
     total_days: number;
+    price_per_day: number;
     total_amount: number;
     pickup_location: string;
     notes: string | null;
@@ -112,6 +137,12 @@ export type AdminCustomer = {
 export type AvailabilityResult = {
     available: boolean;
     total_days: number;
+    /** Days × daily price, before the weekly discount. */
+    subtotal_amount: number;
+    /** 10% off for rentals of 7 days or more. */
+    discount_amount: number;
     total_amount: number;
+    /** Refundable, collected at pickup (not part of the total). */
+    deposit_amount: number;
     message: string;
 };

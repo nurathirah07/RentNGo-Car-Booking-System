@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVehicleRequest;
 use App\Http\Requests\Admin\UpdateVehicleRequest;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Vehicle;
+use App\Models\VehicleImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,7 +83,7 @@ class VehicleController extends Controller
     {
         // safe() only contains fields that passed the rules, so extra
         // fields sent by a user can never reach the database.
-        $data = $request->safe()->except('image');
+        $data = $request->safe()->except(['image', 'gallery', 'remove_gallery']);
 
         if ($request->hasFile('image')) {
             // Saves to storage/app/public/vehicles/<random-name>.jpg and returns that path.
@@ -89,7 +91,9 @@ class VehicleController extends Controller
         }
 
         $vehicle = Vehicle::create($data);
+        $this->syncGallery($request, $vehicle);
 
+        ActivityLog::record('vehicle.created', "{$request->user()->name} added {$vehicle->full_name} ({$vehicle->plate_number}).", $vehicle);
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$vehicle->full_name} was added."]);
 
         return to_route('admin.vehicles.index');
@@ -100,6 +104,8 @@ class VehicleController extends Controller
      */
     public function edit(Vehicle $vehicle): Response
     {
+        $vehicle->load('images');
+
         return Inertia::render('admin/vehicles/edit', [
             ...$this->formOptions(),
             'vehicle' => [
@@ -117,13 +123,17 @@ class VehicleController extends Controller
                 'status' => $vehicle->status,
                 'description' => $vehicle->description,
                 'image_url' => $vehicle->image_url,
+                'gallery' => $vehicle->images->map(fn (VehicleImage $image) => [
+                    'id' => $image->id,
+                    'url' => $image->url,
+                ]),
             ],
         ]);
     }
 
     public function update(UpdateVehicleRequest $request, Vehicle $vehicle): RedirectResponse
     {
-        $data = $request->safe()->except('image');
+        $data = $request->safe()->except(['image', 'gallery', 'remove_gallery']);
 
         // Only touch the image when a new file was uploaded; otherwise keep the current one.
         if ($request->hasFile('image')) {
@@ -137,7 +147,9 @@ class VehicleController extends Controller
         }
 
         $vehicle->update($data);
+        $this->syncGallery($request, $vehicle);
 
+        ActivityLog::record('vehicle.updated', "{$request->user()->name} updated {$vehicle->full_name} ({$vehicle->plate_number}).", $vehicle);
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$vehicle->full_name} was updated."]);
 
         return to_route('admin.vehicles.index');
@@ -157,16 +169,42 @@ class VehicleController extends Controller
             return back();
         }
 
+        // Remember the files first: the gallery rows are removed with the car (cascade).
+        $files = $vehicle->images()->pluck('path')->push($vehicle->image)->filter()->all();
+
         $vehicle->delete();
 
-        // Delete the photo only after the database row is gone.
-        if ($vehicle->image) {
-            Storage::disk('public')->delete($vehicle->image);
-        }
+        // Delete the photos only after the database row is gone.
+        Storage::disk('public')->delete($files);
 
+        ActivityLog::record('vehicle.deleted', auth()->user()?->name." deleted {$vehicle->full_name} ({$vehicle->plate_number}).");
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$vehicle->full_name} was deleted."]);
 
         return back();
+    }
+
+    /**
+     * Remove the gallery photos the admin ticked, then add the newly uploaded ones,
+     * never going over Vehicle::MAX_GALLERY_IMAGES in total.
+     */
+    private function syncGallery(StoreVehicleRequest $request, Vehicle $vehicle): void
+    {
+        $removed = $vehicle->images()->whereKey($request->validated('remove_gallery', []))->get();
+
+        foreach ($removed as $image) {
+            $image->delete();
+            Storage::disk('public')->delete($image->path);
+        }
+
+        $room = Vehicle::MAX_GALLERY_IMAGES - $vehicle->images()->count();
+        $position = (int) $vehicle->images()->max('position');
+
+        foreach (array_slice($request->file('gallery', []), 0, max($room, 0)) as $file) {
+            $vehicle->images()->create([
+                'path' => $file->store('vehicles/gallery', 'public'),
+                'position' => ++$position,
+            ]);
+        }
     }
 
     /**

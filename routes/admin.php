@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FleetCalendarController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\ReceiptController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +32,12 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::get('bookings', [BookingController::class, 'index'])->name('bookings.index');
         Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings.status');
         Route::patch('bookings/{booking}/payment', [BookingController::class, 'markPaid'])->name('bookings.payment');
+        Route::get('bookings/{booking}/receipt', ReceiptController::class)->name('bookings.receipt');
+
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/bookings.csv', [ReportController::class, 'export'])->name('reports.export');
+        Route::get('calendar', FleetCalendarController::class)->name('calendar');
+        Route::get('activity', ActivityLogController::class)->name('activity');
 
         Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::patch('customers/{user}/status', [CustomerController::class, 'updateStatus'])->name('customers.status');

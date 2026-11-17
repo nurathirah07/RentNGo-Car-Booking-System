@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Vehicle;
+use App\Services\VehicleSummary;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,25 +19,14 @@ class HomeController extends Controller
         return Inertia::render('welcome', [
             'popularCars' => Vehicle::query()
                 ->with('category:id,name')
-                ->withCount('bookings')
+                ->withCount(['bookings', 'reviews'])
+                ->withAvg('reviews', 'rating')
                 ->where('status', 'available')
                 ->orderByDesc('bookings_count')
                 ->orderBy('price_per_day')
                 ->take(6)
                 ->get()
-                ->map(fn (Vehicle $vehicle) => [
-                    'id' => $vehicle->id,
-                    'name' => $vehicle->full_name,
-                    'year' => $vehicle->year,
-                    'category' => $vehicle->category->name,
-                    'transmission' => $vehicle->transmission,
-                    'fuel_type' => $vehicle->fuel_type,
-                    'seats' => $vehicle->seats,
-                    'price_per_day' => (float) $vehicle->price_per_day,
-                    'image_url' => $vehicle->image_url,
-                    'status' => $vehicle->status,
-                    'is_popular' => $vehicle->bookings_count >= 2,
-                ]),
+                ->map(fn (Vehicle $vehicle) => VehicleSummary::card($vehicle)),
             'categories' => Category::query()
                 ->withCount(['vehicles' => fn ($query) => $query->where('status', 'available')])
                 ->withMin(['vehicles' => fn ($query) => $query->where('status', 'available')], 'price_per_day')
@@ -47,8 +37,8 @@ class HomeController extends Controller
                     'name' => $category->name,
                     'description' => $category->description,
                     'cars' => $category->vehicles_count,
-                    'from_price' => $category->vehicles_min_price_per_day !== null
-                        ? (float) $category->vehicles_min_price_per_day
+                    'from_price' => $category->getAttribute('vehicles_min_price_per_day') !== null
+                        ? (float) $category->getAttribute('vehicles_min_price_per_day')
                         : null,
                 ]),
             'today' => today()->toDateString(),

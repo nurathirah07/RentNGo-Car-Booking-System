@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\BookingPricing;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -122,7 +123,9 @@ class RentNGoSeeder extends Seeder
                 'pickup_location' => $location,
                 'total_days' => $days,
                 'price_per_day' => $vehicle->price_per_day,
-                'total_amount' => $days * $vehicle->price_per_day,
+                'subtotal_amount' => $days * (float) $vehicle->price_per_day,
+                'total_amount' => $days * (float) $vehicle->price_per_day,
+                'deposit_amount' => BookingPricing::depositFor($vehicle),
                 'status' => $status,
                 'notes' => $notes,
             ]);

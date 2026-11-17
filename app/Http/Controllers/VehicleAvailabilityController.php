@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CheckAvailabilityRequest;
-use App\Models\Booking;
 use App\Models\Vehicle;
+use App\Services\BookingPricing;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -23,12 +23,15 @@ class VehicleAvailabilityController extends Controller
         $returnDate = $request->validated('return_date');
 
         $isAvailable = $vehicle->isAvailableBetween($pickupDate, $returnDate);
-        $totalDays = Booking::countDays($pickupDate, $returnDate);
+        $price = BookingPricing::quote($vehicle->loadMissing('category'), $pickupDate, $returnDate);
 
         return response()->json([
             'available' => $isAvailable,
-            'total_days' => $totalDays,
-            'total_amount' => round($totalDays * (float) $vehicle->price_per_day, 2),
+            'total_days' => $price['days'],
+            'subtotal_amount' => $price['subtotal'],
+            'discount_amount' => $price['discount'],
+            'total_amount' => $price['total'],
+            'deposit_amount' => $price['deposit'],
             'message' => match (true) {
                 $isAvailable => 'This car is available for your dates.',
                 $vehicle->status !== 'available' => 'This car is not available for rent right now.',

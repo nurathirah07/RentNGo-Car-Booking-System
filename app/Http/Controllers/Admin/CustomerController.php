@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -72,6 +73,11 @@ class CustomerController extends Controller
         // "status" is not mass-assignable (so customers can't unblock themselves),
         // so it is set explicitly with forceFill.
         $user->forceFill(['status' => $validated['status']])->save();
+        ActivityLog::record(
+            $validated['status'] === 'blocked' ? 'customer.blocked' : 'customer.unblocked',
+            "{$request->user()->name} ".($validated['status'] === 'blocked' ? 'blocked' : 'unblocked')." {$user->name}.",
+            $user,
+        );
 
         $message = $validated['status'] === 'blocked'
             ? "{$user->name} has been blocked and can no longer log in."

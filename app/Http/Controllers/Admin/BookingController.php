@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Bookings\ChangeBookingStatus;
+use App\Actions\Bookings\RecordPayment;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateBookingStatusRequest;
 use App\Models\Booking;
@@ -52,6 +54,7 @@ class BookingController extends Controller
                 'pickup_time' => $booking->pickupTimeLabel(),
                 'return' => $booking->return_date->format('d M Y'),
                 'total_days' => $booking->total_days,
+                'price_per_day' => (float) $booking->price_per_day,
                 'total_amount' => (float) $booking->total_amount,
                 'pickup_location' => $booking->pickup_location,
                 'notes' => $booking->notes,
@@ -70,7 +73,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function updateStatus(UpdateBookingStatusRequest $request, Booking $booking): RedirectResponse
+    public function updateStatus(UpdateBookingStatusRequest $request, Booking $booking, ChangeBookingStatus $changeStatus): RedirectResponse
     {
         $newStatus = $request->validated('status');
 
@@ -83,10 +86,13 @@ class BookingController extends Controller
             return $this->error('A booking cannot be completed before its pickup date.');
         }
 
-        // cancel() also marks a paid payment as refunded.
-        $newStatus === 'cancelled'
-            ? $booking->cancel()
-            : $booking->update(['status' => $newStatus]);
+        // Updates the booking, writes the audit log and notifies the customer.
+        $changeStatus->handle(
+            $booking,
+            $newStatus,
+            $request->user(),
+            lateDays: (int) $request->validated('late_days', 0),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Booking {$booking->booking_ref} is now {$newStatus}."]);
 
@@ -96,19 +102,17 @@ class BookingController extends Controller
     /**
      * Record that the customer has paid (e.g. cash at the counter or a bank transfer was received).
      */
-    public function markPaid(Booking $booking): RedirectResponse
+    public function markPaid(Request $request, Booking $booking, RecordPayment $recordPayment): RedirectResponse
     {
-        $payment = $booking->payment;
+        $recorded = $recordPayment->handle(
+            $booking,
+            'ADM'.now()->format('ymd').str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
+            $request->user(),
+        );
 
-        if (! $payment || $payment->status !== 'pending' || $booking->status === 'cancelled') {
+        if (! $recorded) {
             return $this->error('This booking has no pending payment.');
         }
-
-        $payment->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'transaction_ref' => 'ADM'.now()->format('ymd').str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
-        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Payment for {$booking->booking_ref} recorded."]);
 

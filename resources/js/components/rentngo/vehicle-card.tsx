@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
-import { Heart } from 'lucide-react';
+import { Heart, Star } from 'lucide-react';
 import CarImage from '@/components/rentngo/car-image';
 import { Tag } from '@/components/rentngo/status-badge';
 import { ringgitShort } from '@/lib/format';
@@ -66,8 +66,20 @@ export default function VehicleCard({
                             {car.name}
                         </Link>
                     </h3>
-                    <p className="text-xs text-muted-foreground">
-                        {car.category} · {car.year} · {car.seats} seats
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="truncate">
+                            {car.category} · {car.year} · {car.seats} seats
+                        </span>
+                        {car.rating != null && (
+                            <span
+                                className="inline-flex shrink-0 items-center gap-0.5 font-medium text-foreground"
+                                aria-label={`Rated ${car.rating} out of 5 from ${car.reviews_count} reviews`}
+                            >
+                                ·
+                                <Star className="size-3 fill-amber-400 text-amber-400" />
+                                {car.rating.toFixed(1)}
+                            </span>
+                        )}
                     </p>
                 </div>
                 {onToggleSave && (

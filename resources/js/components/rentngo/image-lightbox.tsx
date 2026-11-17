@@ -1,5 +1,6 @@
-import { Expand } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Expand } from 'lucide-react';
+import { useState } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import CarImage from '@/components/rentngo/car-image';
 import {
     Dialog,
@@ -11,24 +12,51 @@ import {
 
 /**
  * Click the car photo to see it large in a dialog. The dialog closes with Esc,
- * the close button or a click outside. Without a photo there is nothing to
- * enlarge, so the children are shown as they are.
+ * the close button or a click outside. Pass `images` to page through a gallery
+ * (arrow buttons or ← → keys), starting at `startIndex`. Without a photo there
+ * is nothing to enlarge, so the children are shown as they are.
  */
 export default function ImageLightbox({
     src,
     alt,
+    images,
+    startIndex = 0,
     children,
 }: {
     src: string | null;
     alt: string;
+    images?: string[];
+    startIndex?: number;
     children: ReactNode;
 }) {
-    if (!src) {
+    const photos = images && images.length > 0 ? images : src ? [src] : [];
+    const [index, setIndex] = useState(startIndex);
+
+    if (photos.length === 0) {
         return <>{children}</>;
     }
 
+    const hasMany = photos.length > 1;
+    const current = photos[Math.min(index, photos.length - 1)];
+
+    function step(by: number) {
+        setIndex((i) => (i + by + photos.length) % photos.length);
+    }
+
+    function handleKey(event: KeyboardEvent) {
+        if (!hasMany) {
+            return;
+        }
+
+        if (event.key === 'ArrowRight') {
+            step(1);
+        } else if (event.key === 'ArrowLeft') {
+            step(-1);
+        }
+    }
+
     return (
-        <Dialog>
+        <Dialog onOpenChange={(open) => open && setIndex(startIndex)}>
             <DialogTrigger asChild>
                 <button
                     type="button"
@@ -42,15 +70,61 @@ export default function ImageLightbox({
                     </span>
                 </button>
             </DialogTrigger>
-            <DialogContent className="max-w-[min(64rem,calc(100vw-2rem))] bg-hero-gradient p-4 sm:max-w-[min(64rem,calc(100vw-2rem))] sm:p-8">
+            <DialogContent
+                onKeyDown={handleKey}
+                className="max-w-[min(64rem,calc(100vw-2rem))] bg-hero-gradient p-4 sm:max-w-[min(64rem,calc(100vw-2rem))] sm:p-8"
+            >
                 <DialogTitle className="sr-only">{alt}</DialogTitle>
                 <DialogDescription className="sr-only">
-                    Larger photo of the {alt}
+                    {hasMany
+                        ? `Photo ${index + 1} of ${photos.length} of the ${alt}. Use the arrow keys to see the others.`
+                        : `Larger photo of the ${alt}`}
                 </DialogDescription>
-                <div className="aspect-16/9 w-full">
-                    <CarImage src={src} alt={alt} />
+                <div className="relative aspect-16/9 w-full">
+                    <CarImage
+                        key={current}
+                        src={current}
+                        alt={alt}
+                        className="animate-in duration-300 fade-in"
+                    />
+                    {hasMany && (
+                        <>
+                            <LightboxArrow
+                                side="left"
+                                onClick={() => step(-1)}
+                            />
+                            <LightboxArrow
+                                side="right"
+                                onClick={() => step(1)}
+                            />
+                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full bg-card/90 px-3 py-1 text-xs font-semibold shadow-soft">
+                                {index + 1} / {photos.length}
+                            </span>
+                        </>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function LightboxArrow({
+    side,
+    onClick,
+}: {
+    side: 'left' | 'right';
+    onClick: () => void;
+}) {
+    const Icon = side === 'left' ? ChevronLeft : ChevronRight;
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={side === 'left' ? 'Previous photo' : 'Next photo'}
+            className={`absolute top-1/2 ${side === 'left' ? 'left-0' : 'right-0'} flex size-10 -translate-y-1/2 items-center justify-center rounded-full border bg-card/90 shadow-soft transition-transform hover:scale-105 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none`}
+        >
+            <Icon className="size-5" />
+        </button>
     );
 }

@@ -11,7 +11,7 @@ test('customers cannot access customer management', function () {
 
 test('admins can search customers and admins are never listed', function () {
     $match = User::factory()->withRentalDetails()->create(['name' => 'Daniel Lim']);
-    User::factory()->create(['name' => 'Kavitha']);
+    User::factory()->create(['name' => 'Kavitha', 'email' => 'kavitha@example.com']); // fixed email: a random one could contain "daniel"
     User::factory()->admin()->create(['name' => 'Daniel Admin']);
 
     $this->actingAs(User::factory()->admin()->create())

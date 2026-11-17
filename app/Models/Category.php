@@ -18,6 +18,7 @@ class Category extends Model
         'description',
     ];
 
+    /** @return HasMany<Vehicle, $this> */
     public function vehicles(): HasMany
     {
         return $this->hasMany(Vehicle::class);

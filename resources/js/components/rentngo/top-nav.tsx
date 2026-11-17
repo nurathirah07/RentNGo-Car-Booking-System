@@ -1,10 +1,10 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
 import {
-    Bell,
     CalendarCheck,
     Car,
     ChevronDown,
+    Heart,
     LayoutGrid,
     MapPin,
     Menu,
@@ -15,6 +15,7 @@ import { useMotionValueEvent, useScroll } from 'motion/react';
 import { useState } from 'react';
 import Logo from '@/components/rentngo/logo';
 import { ActivePill, Stagger } from '@/components/rentngo/motion';
+import NotificationBell from '@/components/rentngo/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,7 @@ import { PICKUP_POINTS } from '@/lib/pickup-location';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { index as myBookingsIndex } from '@/routes/bookings';
-import { index as carsIndex } from '@/routes/cars';
+import { index as carsIndex, saved as savedCars } from '@/routes/cars';
 
 type NavLink = {
     title: string;
@@ -48,6 +49,7 @@ type NavLink = {
 
 const links: NavLink[] = [
     { title: 'Browse cars', href: carsIndex(), icon: Car },
+    { title: 'Saved', href: savedCars(), icon: Heart },
     { title: 'My bookings', href: myBookingsIndex(), icon: CalendarCheck },
     { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
 ];
@@ -162,16 +164,7 @@ export default function TopNav() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Link
-                        href={myBookingsIndex()}
-                        className={cn(
-                            'hidden size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex',
-                            focusRing,
-                        )}
-                        aria-label="Booking updates"
-                    >
-                        <Bell className="size-4.5" />
-                    </Link>
+                    <NotificationBell />
 
                     {/* Account menu */}
                     <DropdownMenu>

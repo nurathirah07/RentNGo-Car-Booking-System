@@ -34,6 +34,8 @@ export type EditableVehicle = {
     status: VehicleStatus;
     description: string | null;
     image_url: string | null;
+    /** Extra photos already saved for this car. */
+    gallery: { id: number; url: string }[];
 };
 
 /** Dropdown options the create and edit pages receive from the controller. */

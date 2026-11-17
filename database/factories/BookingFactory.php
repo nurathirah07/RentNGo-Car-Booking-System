@@ -31,7 +31,9 @@ class BookingFactory extends Factory
             'pickup_location' => 'RentNGo HQ, Shah Alam',
             'total_days' => 3,
             'price_per_day' => 100,
+            'subtotal_amount' => 300,
             'total_amount' => 300,
+            'deposit_amount' => 200,
             'status' => 'pending',
         ];
     }

@@ -4,3 +4,4 @@ export type * from './ui';
 export type * from './pagination';
 export type * from './vehicle';
 export type * from './booking';
+export type * from './notification';

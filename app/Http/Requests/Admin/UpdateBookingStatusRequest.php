@@ -19,6 +19,8 @@ class UpdateBookingStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::in(Booking::STATUSES)],
+            // Only when completing: how many days late the car was returned.
+            'late_days' => ['nullable', 'integer', 'min:0', 'max:60'],
         ];
     }
 }

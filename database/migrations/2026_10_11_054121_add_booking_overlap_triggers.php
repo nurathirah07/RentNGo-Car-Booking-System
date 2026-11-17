@@ -38,6 +38,12 @@ return new class extends Migration
      * Two date ranges overlap when: new pickup <= existing return AND new return >= existing pickup.
      * Only pending/confirmed bookings block a car; cancelled and completed ones do not.
      */
+    /**
+     * @param  literal-string  $name
+     * @param  literal-string  $event
+     * @param  literal-string  $skipSelf
+     * @return literal-string
+     */
     private function triggerSql(string $name, string $event, string $skipSelf): string
     {
         return <<<SQL

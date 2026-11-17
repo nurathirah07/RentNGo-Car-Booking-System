@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Payment;
+use App\Models\Review;
 use App\Models\Vehicle;
+use App\Models\VehicleImage;
+use App\Services\VehicleSummary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -56,7 +59,8 @@ class CarController extends Controller
 
         $vehicles = Vehicle::query()
             ->with('category:id,name')
-            ->withCount('bookings') // used for the "Recommended" order and the "Popular" tag
+            ->withCount(['bookings', 'reviews'])
+            ->withAvg('reviews', 'rating') // used for the "Recommended" order and the "Popular" tag
             ->when(
                 $hasDates,
                 fn (Builder $query) => $query->availableBetween($filters['pickup_date'], $filters['return_date']),
@@ -86,19 +90,7 @@ class CarController extends Controller
             })
             ->paginate(12)
             ->withQueryString()
-            ->through(fn (Vehicle $vehicle) => [
-                'id' => $vehicle->id,
-                'name' => $vehicle->full_name,
-                'year' => $vehicle->year,
-                'category' => $vehicle->category->name,
-                'transmission' => $vehicle->transmission,
-                'fuel_type' => $vehicle->fuel_type,
-                'seats' => $vehicle->seats,
-                'price_per_day' => (float) $vehicle->price_per_day,
-                'image_url' => $vehicle->image_url,
-                'status' => $vehicle->status,
-                'is_popular' => $vehicle->bookings_count >= 2,
-            ]);
+            ->through(fn (Vehicle $vehicle) => VehicleSummary::card($vehicle));
 
         return Inertia::render('cars/index', [
             'vehicles' => $vehicles,
@@ -139,7 +131,7 @@ class CarController extends Controller
      * Data for the price slider: the cheapest and dearest daily price in the fleet,
      * and how many cars fall into each of 12 equal price bands (the little bar chart).
      *
-     * @return array{min: int, max: int, histogram: list<int>}
+     * @return array{min: int, max: int, histogram: array<int, int>}
      */
     private function priceStats(): array
     {
@@ -174,7 +166,9 @@ class CarController extends Controller
         // Retired cars are hidden from customers completely.
         abort_if($vehicle->status === 'inactive', 404);
 
-        $vehicle->load('category:id,name');
+        $vehicle->load(['category:id,name', 'images'])
+            ->loadCount('reviews')
+            ->loadAvg('reviews', 'rating');
 
         return Inertia::render('cars/show', [
             'vehicle' => [
@@ -189,8 +183,27 @@ class CarController extends Controller
                 'price_per_day' => (float) $vehicle->price_per_day,
                 'description' => $vehicle->description,
                 'image_url' => $vehicle->image_url,
+                // Main photo first, then the extra gallery photos.
+                'gallery' => collect([$vehicle->image_url])
+                    ->merge($vehicle->images->map(fn (VehicleImage $image) => $image->url))
+                    ->filter()
+                    ->values(),
                 'is_rentable' => $vehicle->status === 'available',
+                'rating' => $vehicle->getAttribute('reviews_avg_rating') !== null ? round((float) $vehicle->getAttribute('reviews_avg_rating'), 1) : null,
+                'reviews_count' => (int) $vehicle->getAttribute('reviews_count'),
             ],
+            'reviews' => $vehicle->reviews()
+                ->with('user:id,name')
+                ->latest()
+                ->take(6)
+                ->get()
+                ->map(fn (Review $review) => [
+                    'id' => $review->id,
+                    'name' => $review->user->name,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'date' => $review->created_at?->format('M Y'),
+                ]),
             'bookedRanges' => $this->upcomingBookings($vehicle)
                 ->map(fn (Booking $booking) => $booking->pickup_date->format('d M').' – '.$booking->return_date->format('d M Y')),
             // The same bookings as plain dates, so the calendar can grey those days out.

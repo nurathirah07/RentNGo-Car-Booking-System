@@ -3,6 +3,7 @@ import {
     Ban,
     CircleCheck,
     CircleDollarSign,
+    FileDown,
     Flag,
     MoreHorizontal,
     Search,
@@ -10,6 +11,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
+import { Label } from '@/components/ui/label';
+import { receipt } from '@/routes/admin/bookings';
 import BookingController from '@/actions/App/Http/Controllers/Admin/BookingController';
 import Pagination from '@/components/pagination';
 import {
@@ -79,18 +82,16 @@ const statusActions: Partial<
 function BookingActions({
     booking,
     onChangeStatus,
+    onComplete,
     onCancel,
     onMarkPaid,
 }: {
     booking: AdminBooking;
     onChangeStatus: (booking: AdminBooking, status: BookingStatus) => void;
+    onComplete: (booking: AdminBooking) => void;
     onCancel: (booking: AdminBooking) => void;
     onMarkPaid: (booking: AdminBooking) => void;
 }) {
-    if (booking.next_statuses.length === 0 && !booking.can_mark_paid) {
-        return null;
-    }
-
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -120,7 +121,9 @@ function BookingActions({
                             onSelect={() =>
                                 isCancel
                                     ? onCancel(booking)
-                                    : onChangeStatus(booking, status)
+                                    : status === 'completed'
+                                      ? onComplete(booking)
+                                      : onChangeStatus(booking, status)
                             }
                         >
                             <action.icon />
@@ -140,6 +143,16 @@ function BookingActions({
                         </DropdownMenuItem>
                     </>
                 )}
+
+                {(booking.next_statuses.length > 0 ||
+                    booking.can_mark_paid) && <DropdownMenuSeparator />}
+                <DropdownMenuItem asChild>
+                    {/* A PDF download, so a plain link rather than an Inertia visit */}
+                    <a href={receipt.url(booking.id)}>
+                        <FileDown />
+                        Download receipt
+                    </a>
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -164,15 +177,33 @@ export default function AdminBookingsIndex({
         null,
     );
 
-    function changeStatus(booking: AdminBooking, status: BookingStatus) {
+    // Completing asks how many days late the car came back (for the late fee).
+    const [bookingToComplete, setBookingToComplete] =
+        useState<AdminBooking | null>(null);
+    const [lateDays, setLateDays] = useState('0');
+    const lateDayCount = Math.max(0, Math.min(60, Number(lateDays) || 0));
+
+    function changeStatus(
+        booking: AdminBooking,
+        status: BookingStatus,
+        extra: Record<string, number> = {},
+    ) {
         router.patch(
             BookingController.updateStatus.url(booking.id),
-            { status },
+            { status, ...extra },
             {
                 preserveScroll: true,
-                onFinish: () => setBookingToCancel(null),
+                onFinish: () => {
+                    setBookingToCancel(null);
+                    setBookingToComplete(null);
+                },
             },
         );
+    }
+
+    function openComplete(booking: AdminBooking) {
+        setLateDays('0');
+        setBookingToComplete(booking);
     }
 
     function markPaid(booking: AdminBooking) {
@@ -320,6 +351,7 @@ export default function AdminBookingsIndex({
                                         <BookingActions
                                             booking={booking}
                                             onChangeStatus={changeStatus}
+                                            onComplete={openComplete}
                                             onCancel={setBookingToCancel}
                                             onMarkPaid={markPaid}
                                         />
@@ -356,6 +388,7 @@ export default function AdminBookingsIndex({
                                     <BookingActions
                                         booking={booking}
                                         onChangeStatus={changeStatus}
+                                        onComplete={openComplete}
                                         onCancel={setBookingToCancel}
                                         onMarkPaid={markPaid}
                                     />
@@ -413,6 +446,74 @@ export default function AdminBookingsIndex({
                             Cancel booking
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={bookingToComplete !== null}
+                onOpenChange={(open) => !open && setBookingToComplete(null)}
+            >
+                <DialogContent>
+                    <form
+                        className="grid gap-5"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+
+                            if (bookingToComplete) {
+                                changeStatus(bookingToComplete, 'completed', {
+                                    late_days: lateDayCount,
+                                });
+                            }
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Mark as completed</DialogTitle>
+                            <DialogDescription>
+                                {bookingToComplete &&
+                                    `${bookingToComplete.ref}: ${bookingToComplete.vehicle}, due back ${bookingToComplete.return}. `}
+                                If the car came back late, enter the extra days.
+                                Each late day costs 1.5× the daily price.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-2">
+                            <Label htmlFor="late-days">Days late</Label>
+                            <Input
+                                id="late-days"
+                                type="number"
+                                min={0}
+                                max={60}
+                                value={lateDays}
+                                onChange={(e) => setLateDays(e.target.value)}
+                                className="max-w-32"
+                            />
+                            {bookingToComplete && lateDayCount > 0 && (
+                                <p className="text-sm text-muted-foreground">
+                                    Late fee:{' '}
+                                    <span className="font-semibold text-foreground">
+                                        {ringgit(
+                                            lateDayCount *
+                                                bookingToComplete.price_per_day *
+                                                1.5,
+                                        )}
+                                    </span>{' '}
+                                    ({lateDayCount} ×{' '}
+                                    {ringgit(bookingToComplete.price_per_day)} ×
+                                    1.5)
+                                </p>
+                            )}
+                        </div>
+                        <DialogFooter className="gap-2">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                    Back
+                                </Button>
+                            </DialogClose>
+                            <Button type="submit">
+                                <Flag />
+                                Complete booking
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </>

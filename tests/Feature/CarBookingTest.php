@@ -110,7 +110,10 @@ test('the availability check reports the price for free dates', function () {
         ->assertExactJson([
             'available' => true,
             'total_days' => 3,
+            'subtotal_amount' => 360,
+            'discount_amount' => 0,
             'total_amount' => 360,
+            'deposit_amount' => 200,
             'message' => 'This car is available for your dates.',
         ]);
 });
@@ -166,6 +169,46 @@ test('a customer can book a free car', function () {
         ->and($payment->amount)->toBe('450.00')
         ->and($payment->method)->toBe('Online Banking')
         ->and($payment->status)->toBe('pending');
+});
+
+test('rentals of a week or more get 10% off', function () {
+    $vehicle = Vehicle::factory()->create(['price_per_day' => 100]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('cars.availability', ['vehicle' => $vehicle, 'pickup_date' => inDays(1), 'return_date' => inDays(7)]))
+        ->assertJson([
+            'total_days' => 7,
+            'subtotal_amount' => 700,
+            'discount_amount' => 70,
+            'total_amount' => 630,
+        ]);
+});
+
+test('luxury cars need a larger deposit', function () {
+    $luxury = Category::factory()->create(['name' => 'Luxury']);
+    $vehicle = Vehicle::factory()->for($luxury)->create();
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('cars.availability', ['vehicle' => $vehicle, 'pickup_date' => inDays(1), 'return_date' => inDays(2)]))
+        ->assertJson(['deposit_amount' => 500]);
+});
+
+test('a booking stores the price breakdown and a reference built from its id', function () {
+    $vehicle = Vehicle::factory()->create(['price_per_day' => 100]);
+
+    $this->actingAs(User::factory()->withRentalDetails()->create())
+        ->post(route('bookings.store'), bookingData($vehicle, [
+            'pickup_date' => inDays(2),
+            'return_date' => inDays(9),
+        ]));
+
+    $booking = Booking::sole();
+    expect($booking->subtotal_amount)->toBe('800.00')
+        ->and($booking->discount_amount)->toBe('80.00')
+        ->and($booking->total_amount)->toBe('720.00')
+        ->and($booking->deposit_amount)->toBe('200.00')
+        ->and($booking->booking_ref)->toBe('RNG-'.today()->addDays(2)->format('Ymd').'-'.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT))
+        ->and($booking->payment->amount)->toBe('720.00');
 });
 
 test('a car cannot be double booked', function () {

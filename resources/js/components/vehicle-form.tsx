@@ -1,6 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
-import { ImagePlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ImagePlus, Images, Undo2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import VehicleController from '@/actions/App/Http/Controllers/Admin/VehicleController';
 import InputError from '@/components/input-error';
@@ -36,7 +36,14 @@ type VehicleFormData = {
     status: string;
     description: string;
     image: File | null;
+    /** New gallery photos picked in this visit. */
+    gallery: File[];
+    /** IDs of saved gallery photos the admin wants removed. */
+    remove_gallery: number[];
 };
+
+/** Must match Vehicle::MAX_GALLERY_IMAGES on the server. */
+const MAX_GALLERY = 6;
 
 type VehicleFormProps = VehicleFormOptions & {
     /** Pass a vehicle to edit it; leave it out to create a new one. */
@@ -74,7 +81,49 @@ export default function VehicleForm({
             status: vehicle?.status ?? 'available',
             description: vehicle?.description ?? '',
             image: null,
+            gallery: [],
+            remove_gallery: [],
         });
+
+    const savedGallery = vehicle?.gallery ?? [];
+    const keptCount = savedGallery.filter(
+        (photo) => !data.remove_gallery.includes(photo.id),
+    ).length;
+    const roomLeft = MAX_GALLERY - keptCount - data.gallery.length;
+
+    // Previews of the newly picked gallery files (revoked when the list changes).
+    const newPreviews = useMemo(
+        () => data.gallery.map((file) => URL.createObjectURL(file)),
+        [data.gallery],
+    );
+    useEffect(
+        () => () => newPreviews.forEach((url) => URL.revokeObjectURL(url)),
+        [newPreviews],
+    );
+
+    function addGalleryFiles(files: FileList | null) {
+        if (!files) {
+            return;
+        }
+
+        setData('gallery', [
+            ...data.gallery,
+            ...Array.from(files).slice(0, Math.max(roomLeft, 0)),
+        ]);
+    }
+
+    function toggleRemoveSaved(photoId: number) {
+        setData(
+            'remove_gallery',
+            data.remove_gallery.includes(photoId)
+                ? data.remove_gallery.filter((id) => id !== photoId)
+                : [...data.remove_gallery, photoId],
+        );
+    }
+
+    const galleryError =
+        errors.gallery ??
+        Object.entries(errors).find(([key]) => key.startsWith('gallery.'))?.[1];
 
     // Shows the current photo, or the newly picked file before it is uploaded.
     const [previewUrl, setPreviewUrl] = useState<string | null>(
@@ -445,6 +494,102 @@ export default function VehicleForm({
                         </div>
                     )}
                     <InputError message={errors.image} />
+                </FormSection>
+
+                <FormSection
+                    title="Gallery"
+                    description={`Up to ${MAX_GALLERY} extra photos (interior, back, boot) shown on the car page.`}
+                >
+                    <div className="grid grid-cols-3 gap-2">
+                        {savedGallery.map((photo) => {
+                            const isRemoved = data.remove_gallery.includes(
+                                photo.id,
+                            );
+
+                            return (
+                                <div
+                                    key={photo.id}
+                                    className="relative aspect-4/3 overflow-hidden rounded-lg border bg-surface-gradient p-1"
+                                >
+                                    <CarImage
+                                        src={photo.url}
+                                        alt=""
+                                        className={
+                                            isRemoved
+                                                ? 'opacity-30 grayscale'
+                                                : undefined
+                                        }
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            toggleRemoveSaved(photo.id)
+                                        }
+                                        aria-label={
+                                            isRemoved
+                                                ? 'Keep this photo'
+                                                : 'Remove this photo'
+                                        }
+                                        className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-card/90 shadow-soft transition-transform hover:scale-110 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                    >
+                                        {isRemoved ? (
+                                            <Undo2 className="size-3.5" />
+                                        ) : (
+                                            <X className="size-3.5" />
+                                        )}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {newPreviews.map((url, index) => (
+                            <div
+                                key={url}
+                                className="relative aspect-4/3 overflow-hidden rounded-lg border-2 border-dashed border-brand/40 bg-surface-gradient p-1"
+                            >
+                                <CarImage src={url} alt="" />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setData(
+                                            'gallery',
+                                            data.gallery.filter(
+                                                (_, i) => i !== index,
+                                            ),
+                                        )
+                                    }
+                                    aria-label="Remove this new photo"
+                                    className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-card/90 shadow-soft transition-transform hover:scale-110 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                >
+                                    <X className="size-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                        {roomLeft > 0 && (
+                            <label
+                                htmlFor="gallery"
+                                className="flex aspect-4/3 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-input text-xs font-semibold text-tint-foreground transition-colors focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-brand/40"
+                            >
+                                <Images className="size-5" />
+                                Add
+                                <input
+                                    id="gallery"
+                                    type="file"
+                                    multiple
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={(e) => {
+                                        addGalleryFiles(e.target.files);
+                                        e.target.value = ''; // lets the same file be picked again
+                                    }}
+                                    className="sr-only"
+                                />
+                            </label>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {keptCount + data.gallery.length} of {MAX_GALLERY} used
+                        · JPG, PNG or WEBP, up to 2 MB each.
+                    </p>
+                    <InputError message={galleryError} />
                 </FormSection>
 
                 <div className="flex gap-3">

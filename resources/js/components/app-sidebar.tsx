@@ -1,8 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    BarChart3,
     CalendarCheck,
     CalendarDays,
+    CalendarRange,
     Car,
+    Heart,
+    History,
     LayoutGrid,
     ShieldCheck,
     Users,
@@ -20,11 +24,13 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { activity, calendar } from '@/routes/admin';
 import { index as adminBookingsIndex } from '@/routes/admin/bookings';
 import { index as customersIndex } from '@/routes/admin/customers';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as vehiclesIndex } from '@/routes/admin/vehicles';
 import { index as myBookingsIndex } from '@/routes/bookings';
-import { index as carsIndex } from '@/routes/cars';
+import { index as carsIndex, saved as savedCars } from '@/routes/cars';
 import type { NavItem } from '@/types';
 
 const customerNavItems: NavItem[] = [
@@ -38,6 +44,11 @@ const customerNavItems: NavItem[] = [
         title: 'Browse cars',
         href: carsIndex(),
         icon: Car,
+    },
+    {
+        title: 'Saved cars',
+        href: savedCars(),
+        icon: Heart,
     },
     {
         title: 'My bookings',
@@ -67,6 +78,21 @@ const adminNavItems: NavItem[] = [
         title: 'Customers',
         href: customersIndex(),
         icon: Users,
+    },
+    {
+        title: 'Fleet calendar',
+        href: calendar(),
+        icon: CalendarRange,
+    },
+    {
+        title: 'Reports',
+        href: reportsIndex(),
+        icon: BarChart3,
+    },
+    {
+        title: 'Activity log',
+        href: activity(),
+        icon: History,
     },
 ];
 

@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import NotificationBell from '@/components/rentngo/notification-bell';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { home } from '@/routes';
@@ -22,6 +23,7 @@ export function AppSidebarHeader({
             <div className="min-w-0 flex-1 truncate">
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
+            <NotificationBell className="size-9" />
             <Button
                 asChild
                 variant="ghost"
