@@ -18,27 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-
-# Install PHP extensions individually
-RUN docker-php-ext-install -j2 pdo_sqlite sqlite3
-RUN docker-php-ext-install -j2 sqlite3
-RUN docker-php-ext-install -j2 pdo_mysql
-RUN docker-php-ext-install -j2 mbstring
-RUN docker-php-ext-install -j2 bcmath
-RUN docker-php-ext-install -j2 exif
-RUN docker-php-ext-install -j2 gd
-RUN docker-php-ext-install -j2 zip
-RUN docker-php-ext-install -j2 intl
-RUN docker-php-ext-install -j2 opcache
-
-
-# Configure GD extension
+# Configure GD extension before installing it
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg
 
 # Install PHP extensions
-RUN docker-php-ext-install \
+RUN docker-php-ext-install -j2 \
     pdo_sqlite \
     sqlite3 \
     pdo_mysql \
@@ -50,7 +36,7 @@ RUN docker-php-ext-install \
     intl \
     opcache
 
-# Enable Apache rewrite module
+# Enable Apache rewrite
 RUN a2enmod rewrite
 
 # Install Composer
@@ -78,7 +64,7 @@ RUN npm ci
 # Build React and Vite assets
 RUN npm run build
 
-# Configure Apache to use Render port 10000
+# Configure Apache for Render port 10000
 RUN sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf \
     && sed -i 's/<VirtualHost \*:80>/<VirtualHost *:10000>/' \
     /etc/apache2/sites-available/000-default.conf \
@@ -91,7 +77,7 @@ RUN printf '<Directory /var/www/html/public>\n\
     Require all granted\n\
 </Directory>\n' >> /etc/apache2/apache2.conf
 
-# Create required Laravel directories and set permissions
+# Create Laravel storage directories
 RUN mkdir -p \
     storage/app \
     storage/framework/cache \
