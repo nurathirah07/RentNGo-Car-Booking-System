@@ -18,23 +18,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure GD extension before installing it
+
+# Configure GD
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg
 
-# Install PHP extensions
-RUN docker-php-ext-install -j2 \
-    pdo_sqlite \
-    sqlite3 \
-    pdo_mysql \
-    mbstring \
-    bcmath \
-    exif \
-    gd \
-    zip \
-    intl \
-    opcache
+# Install PHP extensions one by one
+RUN docker-php-ext-install -j1 pdo_sqlite
+RUN docker-php-ext-install -j1 sqlite3
+RUN docker-php-ext-install -j1 pdo_mysql
+RUN docker-php-ext-install -j1 mbstring
+RUN docker-php-ext-install -j1 bcmath
+RUN docker-php-ext-install -j1 exif
+RUN docker-php-ext-install -j1 gd
+RUN docker-php-ext-install -j1 zip
+RUN docker-php-ext-install -j1 intl
+RUN docker-php-ext-install -j1 opcache
+
 
 # Enable Apache rewrite
 RUN a2enmod rewrite
