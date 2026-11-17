@@ -8,27 +8,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     zip \
+    pkg-config \
+    libsqlite3-dev \
     libzip-dev \
     libpng-dev \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
     libicu-dev \
-    libsqlite3-dev \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
 
 # Install PHP extensions individually
-RUN docker-php-ext-install pdo_sqlite
-RUN docker-php-ext-install sqlite3
-RUN docker-php-ext-install pdo_mysql
-RUN docker-php-ext-install mbstring
-RUN docker-php-ext-install bcmath
-RUN docker-php-ext-install exif
-RUN docker-php-ext-install gd
-RUN docker-php-ext-install zip
-RUN docker-php-ext-install intl
-RUN docker-php-ext-install opcache
+RUN docker-php-ext-install -j2 pdo_sqlite sqlite3
+RUN docker-php-ext-install -j2 sqlite3
+RUN docker-php-ext-install -j2 pdo_mysql
+RUN docker-php-ext-install -j2 mbstring
+RUN docker-php-ext-install -j2 bcmath
+RUN docker-php-ext-install -j2 exif
+RUN docker-php-ext-install -j2 gd
+RUN docker-php-ext-install -j2 zip
+RUN docker-php-ext-install -j2 intl
+RUN docker-php-ext-install -j2 opcache
 
 
 # Configure GD extension
