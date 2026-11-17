@@ -17,6 +17,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
+
+# Install PHP extensions individually
+RUN docker-php-ext-install pdo_sqlite
+RUN docker-php-ext-install sqlite3
+RUN docker-php-ext-install pdo_mysql
+RUN docker-php-ext-install mbstring
+RUN docker-php-ext-install bcmath
+RUN docker-php-ext-install exif
+RUN docker-php-ext-install gd
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install intl
+RUN docker-php-ext-install opcache
+
+
 # Configure GD extension
 RUN docker-php-ext-configure gd \
     --with-freetype \
